@@ -9,7 +9,6 @@ else:
     from .commands import *
 
 cssStyleCompletion = None
-cache_path = None
 pseudo_selector_list = []
 scratch_view = None
 settings = {}
@@ -31,35 +30,35 @@ symbol_dict = {
     'scss_mixin_command': scssMixinCompletionSet
 }
 
-if ST2:
-    cache_path = os.path.join(
-        sublime.packages_path(),
-        '..',
-        'Cache',
-        'CSS',
-        'CSS.completions.cache'
-    )
+def get_cache_path():
+    cache_path = None
+    if hasattr(sublime, 'cache_path'):
+        cache_path = os.path.join(
+            sublime.cache_path(),
+            'CSS',
+            'CSS.completions.cache'
+        )
+    else:
+        cache_path = os.path.join(
+            sublime.packages_path(),
+            '..',
+            'Cache',
+            'CSS',
+            'CSS.completions.cache'
+        )
 
-if not ST2:
-    cache_path = os.path.join(
-        sublime.cache_path(),
-        'CSS',
-        'CSS.completions.cache'
-    )
+    cache_path = os.path.abspath(cache_path)
+    cache_dir = cache_path.replace('CSS.completions.cache', '')
 
-cache_path = os.path.abspath(cache_path)
-cache_dir = cache_path.replace('CSS.completions.cache', '')
-
-if not os.path.exists(cache_dir):
-    os.makedirs(cache_dir)
-
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
 
 def plugin_loaded():
     # TODO: Getting too many globals...
-    global cssStyleCompletion, cache_path
+    global cssStyleCompletion
     global settings, pseudo_selector_list
 
-    cssStyleCompletion = CssStyleCompletion(cache_path)
+    cssStyleCompletion = CssStyleCompletion()
 
     settings = sublime.load_settings('css_style_completions.sublime-settings')
     pseudo_selector_list = settings.get("pseudo_selector_list")
@@ -158,8 +157,8 @@ def create_output_panel(name):
 
 
 class CssStyleCompletion():
-    def __init__(self, cache_path):
-        self.cache_path = cache_path
+    def __init__(self):
+        self.cache_path = get_cache_path()
         self._loadCache()
 
     def _loadCache(self):
@@ -325,9 +324,10 @@ class CssStyleCompletion():
 
 class CssStyleCompletionDeleteCacheCommand(sublime_plugin.WindowCommand):
     """Deletes all cache that plugin has created"""
-    global cache_path, cssStyleCompletion
+    global cssStyleCompletion
 
     def run(self):
+        cache_path = get_cache_path()
         if cache_path and os.path.isfile(cache_path):
             os.remove(cache_path)
             cssStyleCompletion.projects_cache = {}
